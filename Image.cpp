@@ -18,7 +18,7 @@ namespace Dithering
 
 	void Image::createImage(const std::string& path, int rows, int columns)
 	{
-		image_ = cimg_library::CImg<unsigned char>(columns, rows, 1, 4, 1);
+		image_ = cimg_library::CImg<unsigned char>(columns, rows, 1, 3, 255);
 
 		if (!image_)
 		{
