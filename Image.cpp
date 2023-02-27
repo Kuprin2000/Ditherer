@@ -18,7 +18,7 @@ namespace Dithering
 
 	void Image::createImage(const std::string& path, int rows, int columns)
 	{
-		image_ = cimg_library::CImg<unsigned char>(columns, rows, 1, 3, 255);
+		image_ = cimg_library::CImg<unsigned char>(columns, rows, 1, 3, 0);
 
 		if (!image_)
 		{
@@ -66,16 +66,16 @@ namespace Dithering
 	{
 		return
 		{
-			*image_.data(column, row, 1, 0),
-			*image_.data(column, row, 1, 1),
-			*image_.data(column, row, 1, 2)
+			*image_.data(column, row, 0, 0),
+			*image_.data(column, row, 0, 1),
+			*image_.data(column, row, 0, 2)
 		};
 	}
 
 	void Image::setColor(Color new_color, int row, int column)
 	{
-		*image_.data(column, row, 1, 0) = new_color[0];
-		*image_.data(column, row, 1, 1) = new_color[1];
-		*image_.data(column, row, 1, 2) = new_color[2];
+		*image_.data(column, row, 0, 0) = new_color[0];
+		*image_.data(column, row, 0, 1) = new_color[1];
+		*image_.data(column, row, 0, 2) = new_color[2];
 	}
 }

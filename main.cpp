@@ -6,8 +6,8 @@ int main(int argc, char* argv[])
 {
 	if (argc != 4)
 	{
-		std::cout << "You must type following arguments:" << std::endl << "1) Input image path;" 
-			<< std::endl << "2) Output image path;" << std::endl << std::endl << "3) Quality;";
+		std::cout << "You must type following arguments:" << std::endl << "1) Input image path;"
+			<< std::endl << "2) Output image path;" << std::endl << std::endl << "3) Save quality;";
 
 		return 0;
 	}
@@ -25,7 +25,9 @@ int main(int argc, char* argv[])
 	Dithering::Image output_image;
 	output_image.createImage(output_path, rows, columns);
 
-	Dithering::Ditherer ditherer;
+	const auto min_distance = 5;
+	const auto test_points_count = 30;
+	Dithering::Ditherer ditherer(min_distance, test_points_count);
 	ditherer.process(input_image, output_image);
 
 	output_image.saveImage(Dithering::Image::pathToFormat(output_path), std::atoi(argv[3]));
