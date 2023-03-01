@@ -1,146 +1,161 @@
 #include <cmath>
-#include <algorithm>
+#include <omp.h>
+#include <vector>
 #include "Ditherer.h"
 
 namespace Dithering
 {
-	Ditherer::Ditherer(int min_distance, int test_points_count) : min_distance_(min_distance), test_points_count_(test_points_count)
+	Ditherer::Ditherer(int threads_count)
 	{
-		srand((unsigned int)time(NULL));
+		if (threads_count % 3 && threads_count != 1)
+		{
+			threads_count -= threads_count % 3;
+		}
+
+		omp_set_num_threads(threads_count);
 	}
 
-	void Ditherer::process(const Image& input_image, Image& output_image) const
+	void Ditherer::process(Image& input_image, Image& output_image) const
+	{
+		if (omp_get_max_threads() == 1)
+		{
+			processSingleThread(input_image, output_image);
+		}
+		else
+		{
+			processMultiThread(input_image, output_image, omp_get_max_threads());
+		}
+	}
+
+	void Ditherer::processSingleThread(Image& input_image, Image& output_image) const
 	{
 		int rows_count = 0;
 		int columns_count = 0;
 		input_image.getSize(rows_count, columns_count);
 
-		BlueNoiseMap blue_noise(rows_count, columns_count, min_distance_);
-		generateBlueNoise(blue_noise);
-
-		ditherImage(input_image, blue_noise, output_image);
-
 		for (int i = 0; i < rows_count; ++i)
 		{
 			for (int j = 0; j < columns_count; ++j)
 			{
-				Point curent_point = { i, j };
-				if (blue_noise.getValue(curent_point) == BlueNoisePixel::POINT)
+				processPixel(input_image, output_image, i, j, rows_count, columns_count);
+			}
+		}
+	}
+
+	void Ditherer::processMultiThread(Image& input_image, Image& output_image, int threads_count) const
+	{
+		int rows_count = 0;
+		int columns_count = 0;
+		input_image.getSize(rows_count, columns_count);
+
+		const auto iterations_count = columns_count + threads_count * 3;
+		std::vector<int> column_counters(threads_count, 0);
+
+		#pragma omp parallel shared(input_image, output_image, column_counters)
+		{
+			const auto thread_id = omp_get_thread_num();
+
+			for (int row = 0; row < rows_count; row += threads_count)
+			{
+				column_counters[thread_id] = 0;
+				for (int iteration = 0; iteration < iterations_count; ++iteration)
 				{
-					output_image.setColor({ 255, 255, 255 }, i, j);
+					if (row + thread_id < rows_count && column_counters[thread_id] < columns_count)
+					{
+						if (!thread_id || (thread_id && column_counters[thread_id - 1] > 3))
+						{
+							processPixel(input_image, output_image, row + thread_id, column_counters[thread_id], rows_count, columns_count);
+							++column_counters[thread_id];
+						}
+					}
+
+					#pragma omp barrier
 				}
 			}
 		}
 	}
 
-	Ditherer::BlueNoiseMap::BlueNoiseMap(int rows_count, int columns_count, int min_distance) :
-		origirnal_columns_count_(columns_count), min_distance_(min_distance)
+	void Ditherer::processPixel(Image& input_image, Image& output_image, int row, int column, int rows_count, int columns_count) const
 	{
-		data_.resize(rows_count);
+		const auto brightness = input_image.getBrightness(row, column);
 
-		const auto elements_per_row = columns_count / 4 + (int)((columns_count % 4) != 0);
-		for (auto& row : data_)
+		if (brightness >= 0.5f)
 		{
-			row.resize(elements_per_row);
+			output_image.setColor({ 255, 255, 255 }, row, column);
 		}
-	}
-
-	void Ditherer::BlueNoiseMap::setPoint(const Point& point)
-	{
-		const auto min_row = std::max(point[0] - min_distance_, 0);
-		const auto max_row = std::min(point[0] + min_distance_, (int)data_.size() - 1);
-		const auto min_column = std::max(point[1] - min_distance_, 0);
-		const auto max_column = std::min(point[1] + min_distance_, origirnal_columns_count_ - 1);
-
-		auto real_column = 0;
-		auto shift = 0;
-		uint8_t mask = UINT8_MAX;
-
-		for (int i = min_row; i <= max_row; ++i)
+		else
 		{
-			for (int j = min_column; j <= max_column; ++j)
+			output_image.setColor({ 0, 0, 0 }, row, column);
+		}
+
+		const auto mistake = 0.5f - brightness;
+		const auto mistake_7_48 = mistake * coeff_7_48;
+		const auto mistake_5_48 = mistake * coeff_5_48;
+		const auto mistake_3_48 = mistake * coeff_3_48;
+		const auto mistake_1_48 = mistake * coeff_1_48;
+
+		const auto opposite_brightness = 1.0f / brightness;
+
+		const auto brightness_coef_7_48 = 1.0f + mistake_7_48 * opposite_brightness;
+		const auto brightness_coef_5_48 = 1.0f + mistake_5_48 * opposite_brightness;
+		const auto brightness_coef_3_48 = 1.0f + mistake_3_48 * opposite_brightness;
+		const auto brightness_coef_1_48 = 1.0f + mistake_1_48 * opposite_brightness;
+
+		if (column + 1 < columns_count)
+		{
+			input_image.scaleBrightness(brightness_coef_7_48, row, column + 1);
+		}
+		if (column + 2 < columns_count)
+		{
+			input_image.scaleBrightness(brightness_coef_5_48, row, column + 2);
+		}
+
+		++row;
+		if (row < rows_count)
+		{
+			if (column - 2 > 0)
 			{
-				real_column = j / 4;
-				shift = 2 * (j % 4);
-				mask = UINT8_MAX - ((uint8_t)1 << shift) - ((uint8_t)1 << (shift + 1));
-				data_[i][real_column].raw_data &= mask;
-				data_[i][real_column].raw_data |= (uint8_t)BlueNoisePixel::RESERVED << shift;
+				input_image.scaleBrightness(brightness_coef_3_48, row, column - 2);
+			}
+			if (column - 1 > 0)
+			{
+				input_image.scaleBrightness(brightness_coef_5_48, row, column - 1);
+			}
+
+			input_image.scaleBrightness(brightness_coef_7_48, row, column);
+
+			if (column + 1 < columns_count)
+			{
+				input_image.scaleBrightness(brightness_coef_5_48, row, column + 1);
+			}
+			if (column + 2 < columns_count)
+			{
+				input_image.scaleBrightness(brightness_coef_3_48, row, column + 2);
 			}
 		}
 
-		real_column = point[1] / 4;
-		shift = 2 * (point[1] % 4);
-		mask = UINT8_MAX - ((uint8_t)1 << shift) - ((uint8_t)1 << (shift + 1));
-		data_[point[0]][real_column].raw_data &= mask;
-		data_[point[0]][real_column].raw_data |= (uint8_t)BlueNoisePixel::POINT << shift;
-	}
-
-	Ditherer::BlueNoisePixel Ditherer::BlueNoiseMap::getValue(const Point& point) const
-	{
-		const auto real_column = point[1] / 4;
-		const auto shift = 2 * (point[1] % 4);
-		uint8_t mask = 0x3;
-		return (BlueNoisePixel)((data_[point[0]][real_column].raw_data >> shift) & mask);
-	}
-
-	int Ditherer::BlueNoiseMap::getRowsCount() const
-	{
-		return (int)data_.size();
-	}
-
-	int Ditherer::BlueNoiseMap::getColumnsCount() const
-	{
-		return origirnal_columns_count_;
-	}
-
-	void Ditherer::generateBlueNoise(Ditherer::BlueNoiseMap& blue_noise) const
-	{
-		std::vector<Point> processing_list;
-
-		auto first_point = generateRandomPoint(blue_noise.getRowsCount(), blue_noise.getColumnsCount());
-		blue_noise.setPoint(first_point);
-		processing_list.push_back(std::move(first_point));
-
-		auto current_point_index = 0;
-		Point random_point;
-		while (!processing_list.empty())
+		++row;
+		if (row < rows_count)
 		{
-			current_point_index = rand() % (int)processing_list.size();
-
-			for (int i = 0; i < test_points_count_; ++i)
+			if (column - 2 > 0)
 			{
-				random_point = generateRandomPointNearby(processing_list[current_point_index], (int)blue_noise.getRowsCount(), (int)blue_noise.getColumnsCount());
-				if (blue_noise.getValue(random_point) != BlueNoisePixel::EMPTY)
-				{
-					continue;
-				}
-
-				blue_noise.setPoint(random_point);
-				processing_list.push_back(random_point);
+				input_image.scaleBrightness(brightness_coef_1_48, row, column - 2);
+			}
+			if (column - 1 > 0)
+			{
+				input_image.scaleBrightness(brightness_coef_3_48, row, column - 1);
 			}
 
-			processing_list.erase(processing_list.begin() + current_point_index);
+			input_image.scaleBrightness(brightness_coef_5_48, row, column);
+
+			if (column + 1 < columns_count)
+			{
+				input_image.scaleBrightness(brightness_coef_3_48, row, column + 1);
+			}
+			if (column + 2 < columns_count)
+			{
+				input_image.scaleBrightness(brightness_coef_1_48, row, column + 2);
+			}
 		}
-	}
-
-	Ditherer::Point Ditherer::generateRandomPoint(int max_row, int max_column) const
-	{
-		return { (uint16_t)(rand() % max_row),  (uint16_t)(rand() % max_column) };
-	}
-
-	Ditherer::Point Ditherer::generateRandomPointNearby(const Ditherer::Point& point, int max_row, int max_column) const
-	{
-		const auto distance = ((float)min_distance_ * (1.0f + (float)(rand() % 1024) / 1024.0f));
-		const auto angle = (float)M_PI * (((float)(rand() % 2024) / 1024.0f) - 1.0f);
-
-		const auto new_row = (uint16_t)std::clamp((int)point[0] + (int)(distance * sinf(angle)), 0, max_row - 1);
-		const auto new_column = (uint16_t)std::clamp((int)point[1] + (int)(distance * cosf(angle)), 0, max_column - 1);
-
-		return { new_row, new_column };
-	}
-
-	void Ditherer::ditherImage(const Image& input_image, const Ditherer::BlueNoiseMap& blue_noise, Image& output_image) const
-	{
-		// TODO
 	}
 }
