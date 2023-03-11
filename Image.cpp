@@ -28,32 +28,9 @@ namespace Dithering
 		path_ = path;
 	}
 
-	Image::Format Image::pathToFormat(const std::string& path)
+	void Image::saveImage() const
 	{
-		const auto format = path.substr(path.find('.'));
-		if (!format.compare(".jpeg"))
-		{
-			return Format::JPEG;
-		}
-
-		if (!format.compare(".png"))
-		{
-			return Format::PNG;
-		}
-
-		throw std::exception("Bad saving format");
-	}
-
-	void Image::saveImage(Format save_format) const
-	{
-		if (save_format == Format::JPEG)
-		{
-			image_.save_jpeg(path_.c_str(), 100);
-		}
-		else
-		{
-			image_.save_png(path_.c_str(), 3);
-		}
+		image_.save(path_.c_str());
 	}
 
 	void Image::getSize(int& rows, int& columns) const

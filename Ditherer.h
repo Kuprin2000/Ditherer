@@ -6,9 +6,7 @@ namespace Dithering
 	class Ditherer
 	{
 	public:
-		Ditherer(int threads_count);
-
-		void process(Image& input_image, Image& output_image) const;
+		void process(Image& input_image, Image& output_image, int algorithm_id, int threads_count) const;
 
 	private:
 		// 7.0f / 48.0f
@@ -26,6 +24,10 @@ namespace Dithering
 		void processSingleThread(Image& input_image, Image& output_image) const;
 
 		void processMultiThread(Image& input_image, Image& output_image, int threads_count) const;
+
+		void processSingleThreadTwo(Image& input_image, Image& output_image) const;
+
+		void processMultiThreadTwo(Image& input_image, Image& output_image, int threads_count) const;
 
 		void processPixel(Image& input_image, Image& output_image, int row, int column, int rows_count, int columns_count) const;
 	};

@@ -2,29 +2,41 @@
 #include <omp.h>
 #include <vector>
 #include "Ditherer.h"
+#include <iostream>
 
 namespace Dithering
 {
-	Ditherer::Ditherer(int threads_count)
+	void Ditherer::process(Image& input_image, Image& output_image, int algorithm_id, int threads_count) const
 	{
-		if (threads_count % 3 && threads_count != 1)
+		if (!algorithm_id)
 		{
-			threads_count -= threads_count % 3;
+			if (threads_count == 1)
+			{
+				processSingleThread(input_image, output_image);
+			}
+			else
+			{
+				processMultiThread(input_image, output_image, threads_count);
+			}
+
+			return;
 		}
 
-		omp_set_num_threads(threads_count);
-	}
+		if (algorithm_id == 1)
+		{
+			if (threads_count == 1)
+			{
+				processSingleThreadTwo(input_image, output_image);
+			}
+			else
+			{
+				processMultiThreadTwo(input_image, output_image, threads_count);
+			}
 
-	void Ditherer::process(Image& input_image, Image& output_image) const
-	{
-		if (omp_get_max_threads() == 1)
-		{
-			processSingleThread(input_image, output_image);
+			return;
 		}
-		else
-		{
-			processMultiThread(input_image, output_image, omp_get_max_threads());
-		}
+
+		throw std::exception("Wrong algorithm id");
 	}
 
 	void Ditherer::processSingleThread(Image& input_image, Image& output_image) const
@@ -44,6 +56,12 @@ namespace Dithering
 
 	void Ditherer::processMultiThread(Image& input_image, Image& output_image, int threads_count) const
 	{
+		if (threads_count % 3 && threads_count != 1)
+		{
+			threads_count -= threads_count % 3;
+		}
+		omp_set_num_threads(threads_count);
+
 		int rows_count = 0;
 		int columns_count = 0;
 		input_image.getSize(rows_count, columns_count);
@@ -51,7 +69,7 @@ namespace Dithering
 		const auto iterations_count = columns_count + threads_count * 3;
 		std::vector<int> column_counters(threads_count, 0);
 
-		#pragma omp parallel shared(input_image, output_image, column_counters)
+		#pragma omp parallel shared(column_counters)
 		{
 			const auto thread_id = omp_get_thread_num();
 
@@ -71,6 +89,53 @@ namespace Dithering
 
 					#pragma omp barrier
 				}
+			}
+		}
+	}
+
+	void Ditherer::processSingleThreadTwo(Image& input_image, Image& output_image) const
+	{
+		int rows_count = 0;
+		int columns_count = 0;
+		input_image.getSize(rows_count, columns_count);
+
+		const auto row_coeff = 1.0f / 3.0f;
+		const auto iterations_count = (rows_count - 1) * 3 + columns_count;
+		for (int i = 0; i < iterations_count; ++i)
+		{
+			int row = (int)ceilf(std::max(i - columns_count + 1.0f, 0.0f) * row_coeff);
+			int column = i - row * 3;
+			const auto elements_count = std::min(1 + column / 3, rows_count - row);
+
+			for (int j = 0; j < elements_count; ++j)
+			{
+				processPixel(input_image, output_image, row, column, rows_count, columns_count);
+				++row;
+				column -= 3;
+			}
+		}
+	}
+
+	void Ditherer::processMultiThreadTwo(Image& input_image, Image& output_image, int threads_count) const
+	{
+		omp_set_num_threads(threads_count);
+
+		int rows_count = 0;
+		int columns_count = 0;
+		input_image.getSize(rows_count, columns_count);
+
+		const auto row_coeff = 1.0f / 3.0f;
+		const auto iterations_count = (rows_count - 1) * 3 + columns_count;
+		for (int i = 0; i < iterations_count; ++i)
+		{
+			int row = (int)ceilf(std::max(i - columns_count + 1.0f, 0.0f) * row_coeff);
+			int column = i - row * 3;
+
+			const auto elements_count = std::min(1 + column / 3, rows_count - row);
+			#pragma omp parallel for if(elements_count > 50)
+			for (int j = 0; j < elements_count; ++j)
+			{
+				processPixel(input_image, output_image, row + j, column - 3 * j, rows_count, columns_count);
 			}
 		}
 	}

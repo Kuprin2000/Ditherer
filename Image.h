@@ -1,6 +1,6 @@
 #pragma once
-#define cimg_use_jpeg
-#define cimg_use_png
+#define cimg_use_jpeg 1
+#define cimg_use_png 1
 #define cimg_display 0
 #define XMD_H
 #include <string>
@@ -14,12 +14,6 @@ namespace Dithering
 	class Image
 	{
 	public:
-		enum class Format : uint8_t
-		{
-			JPEG,
-			PNG
-		};
-
 		Image() = default;
 
 		Image(const Image& image) = delete;
@@ -30,9 +24,7 @@ namespace Dithering
 
 		void createImage(const std::string& path, int rows, int columns);
 
-		_NODISCARD static Format pathToFormat(const std::string& path);
-
-		void saveImage(Format save_format) const;
+		void saveImage() const;
 
 		_NODISCARD void getSize(int& rows, int& columns) const;
 
