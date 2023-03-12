@@ -10,8 +10,8 @@ int main(int argc, char* argv[])
 		std::cout << "You must type following arguments:" <<
 			std::endl << "1) Input image path;" <<
 			std::endl << "2) Output image path;" <<
-			std::endl << "Parallel algorithm type (0 or 1);" <<
-			std::endl << "3) Threads count;";
+			std::endl << "3) Parallel algorithm type (0 or 1);" <<
+			std::endl << "4) Threads count;";
 
 		return 0;
 	}
@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 
 	if (threads_count < 1 || threads_count > 1000 || algorithm_id < 0 || algorithm_id > 1)
 	{
-		std::cout << "You typed wrong threads count or wrong alhgorithm id" << std::endl;
+		std::cout << "You typed wrong threads count or wrong algorithm id" << std::endl;
 		return 1;
 	}
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 
 	const auto end_time = std::chrono::high_resolution_clock::now();
 
-	std::cout << "We proceded image with resolution " << columns << "x" << rows << " at " <<
+	std::cout << "We proceeded image with resolution " << columns << "x" << rows << " at " <<
 		std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() << " milliseconds";
 
 	try

@@ -2,7 +2,6 @@
 #include <omp.h>
 #include <vector>
 #include "Ditherer.h"
-#include <iostream>
 
 namespace Dithering
 {
@@ -132,7 +131,7 @@ namespace Dithering
 			int column = i - row * 3;
 
 			const auto elements_count = std::min(1 + column / 3, rows_count - row);
-			#pragma omp parallel for if(elements_count > 50)
+			#pragma omp parallel for
 			for (int j = 0; j < elements_count; ++j)
 			{
 				processPixel(input_image, output_image, row + j, column - 3 * j, rows_count, columns_count);
