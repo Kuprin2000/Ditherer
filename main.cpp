@@ -5,13 +5,31 @@
 
 int main(int argc, char* argv[])
 {
-	if (argc != 5)
+	if (argc != 6)
 	{
 		std::cout << "You must type following arguments:" <<
-			std::endl << "1) Input image path;" <<
-			std::endl << "2) Output image path;" <<
-			std::endl << "3) Parallel algorithm type (0 or 1);" <<
-			std::endl << "4) Threads count;";
+			std::endl << "I) Input image path;" <<
+			std::endl << "II) Output image path;" <<
+			std::endl << "III) Color palette:" <<
+			std::endl << "0) Black and white (0010, 0011, Neon);" <<
+			std::endl << "1) Black, gray and white (0011);" <<
+			std::endl << "2) Two-bit grayscale (Neon);" <<
+			std::endl << "3) Four-bit grayscale (Neon);" <<
+			std::endl << "4) Black, red, green, blue (0010, 0011);" <<
+			std::endl << "5) BK-0011 pallete 1 (0011);" <<
+			std::endl << "6) BK-0011 pallete 2 (0011);" <<
+			std::endl << "7) BK-0011 pallete 3 (0011);" <<
+			std::endl << "8) BK-0011 pallete 6 (0011);" <<
+			std::endl << "9) BK-0011 pallete 7 (0011);" <<
+			std::endl << "10) BK-0011 pallete 8 (0011);" <<
+			std::endl << "11) BK-0011 pallete 9 (0011);" <<
+			std::endl << "12) BK-0011 pallete 10 (0011);" <<
+			std::endl << "13) BK-0011 pallete 11 (0011);" <<
+			std::endl << "14) BK-0011 pallete 12 (0011);" <<
+			std::endl << "15) VGA 16 colors (Neon);" <<
+			std::endl << "16) VGA 256 colors (Neon);" <<
+			std::endl << "IV) Parallel algorithm type (0 or 1);" <<
+			std::endl << "V) Threads count;";
 
 		return 0;
 	}
@@ -19,14 +37,19 @@ int main(int argc, char* argv[])
 	std::string input_path = argv[1];
 	std::string output_path = argv[2];
 
-	const auto algorithm_id = atoi(argv[3]);
-	const auto threads_count = atoi(argv[4]);
+	const auto palette_int = atoi(argv[3]);
+	const auto algorithm_id = atoi(argv[4]);
+	const auto threads_count = atoi(argv[5]);
 
-	if (threads_count < 1 || threads_count > 1000 || algorithm_id < 0 || algorithm_id > 1)
+	if (threads_count < 1 || threads_count > 1000
+		|| algorithm_id < 0 || algorithm_id > 1
+		|| palette_int < 0 || palette_int >= Dithering::PALLETES_COUNT)
 	{
-		std::cout << "You typed wrong threads count or wrong algorithm id" << std::endl;
+		std::cout << "You typed wrong parameters" << std::endl;
 		return 1;
 	}
+
+	const auto pallete = (Dithering::Palette)palette_int;
 
 	Dithering::Image input_image;
 	try
@@ -57,7 +80,7 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		ditherer.process(input_image, output_image, algorithm_id, threads_count);
+		ditherer.process(input_image, output_image, pallete, algorithm_id, threads_count);
 	}
 	catch (...)
 	{

@@ -49,30 +49,10 @@ namespace Dithering
 		};
 	}
 
-	void Image::setColor(Color new_color, int row, int column)
+	void Image::setColor(const Color &new_color, int row, int column)
 	{
 		*image_.data(column, row, 0, 0) = new_color[0];
 		*image_.data(column, row, 0, 1) = new_color[1];
 		*image_.data(column, row, 0, 2) = new_color[2];
-	}
-
-	float Image::getBrightness(int row, int column) const
-	{
-		const auto red = *image_.data(column, row, 0, 0);
-		const auto green = *image_.data(column, row, 0, 1);
-		const auto blue = *image_.data(column, row, 0, 2);
-
-		return sqrtf(float(red * red + green * green + blue * blue)) * brightness_coeff_;
-	}
-
-	void Image::scaleBrightness(float coeff, int row, int column)
-	{
-		const float red = *image_.data(column, row, 0, 0);
-		const float green = *image_.data(column, row, 0, 1);
-		const float blue = *image_.data(column, row, 0, 2);
-
-		*image_.data(column, row, 0, 0) = (unsigned char)std::min(red * coeff, 255.0f);
-		*image_.data(column, row, 0, 1) = (unsigned char)std::min(green * coeff, 255.0f);
-		*image_.data(column, row, 0, 2) = (unsigned char)std::min(blue * coeff, 255.0f);
 	}
 }

@@ -30,17 +30,13 @@ namespace Dithering
 
 		_NODISCARD Color getColor(int row, int column) const;
 
-		void setColor(Color new_color, int row, int column);
-
-		_NODISCARD float getBrightness(int row, int column) const;
-
-		void scaleBrightness(float new_brightness, int row, int column);
+		void setColor(const Color &new_color, int row, int column);
 
 	private:
 		static const int BAD_COLOR = -1;
 
-		// 1.0f / (sqrtf(3.0f)*255.0f)
-		const float brightness_coeff_ = 0.0022641187f;
+		// sqrt(255) / sqrt(3)
+		const float brightness_coeff_ = 9.2195444f;
 
 		cimg_library::CImg<unsigned char> image_;
 
