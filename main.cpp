@@ -16,16 +16,16 @@ int main(int argc, char* argv[])
 			std::endl << "2) Two-bit grayscale (Neon);" <<
 			std::endl << "3) Four-bit grayscale (Neon);" <<
 			std::endl << "4) Black, red, green, blue (0010, 0011);" <<
-			std::endl << "5) BK-0011 pallete 1 (0011);" <<
-			std::endl << "6) BK-0011 pallete 2 (0011);" <<
-			std::endl << "7) BK-0011 pallete 3 (0011);" <<
-			std::endl << "8) BK-0011 pallete 6 (0011);" <<
-			std::endl << "9) BK-0011 pallete 7 (0011);" <<
-			std::endl << "10) BK-0011 pallete 8 (0011);" <<
-			std::endl << "11) BK-0011 pallete 9 (0011);" <<
-			std::endl << "12) BK-0011 pallete 10 (0011);" <<
-			std::endl << "13) BK-0011 pallete 11 (0011);" <<
-			std::endl << "14) BK-0011 pallete 12 (0011);" <<
+			std::endl << "5) BK-0011 palette 1 (0011);" <<
+			std::endl << "6) BK-0011 palette 2 (0011);" <<
+			std::endl << "7) BK-0011 palette 3 (0011);" <<
+			std::endl << "8) BK-0011 palette 6 (0011);" <<
+			std::endl << "9) BK-0011 palette 7 (0011);" <<
+			std::endl << "10) BK-0011 palette 8 (0011);" <<
+			std::endl << "11) BK-0011 palette 9 (0011);" <<
+			std::endl << "12) BK-0011 palette 10 (0011);" <<
+			std::endl << "13) BK-0011 palette 11 (0011);" <<
+			std::endl << "14) BK-0011 palette 12 (0011);" <<
 			std::endl << "15) VGA 16 colors (Neon);" <<
 			std::endl << "16) VGA 256 colors (Neon);" <<
 			std::endl << "IV) Parallel algorithm type (0 or 1);" <<
@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 
 	if (threads_count < 1 || threads_count > 1000
 		|| algorithm_id < 0 || algorithm_id > 1
-		|| palette_int < 0 || palette_int >= Dithering::PALLETES_COUNT)
+		|| palette_int < 0 || palette_int >= Dithering::PALLETTES_COUNT)
 	{
 		std::cout << "You typed wrong parameters" << std::endl;
 		return 1;
