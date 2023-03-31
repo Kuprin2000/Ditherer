@@ -14,6 +14,7 @@ namespace Dithering
 		}
 
 		path_ = path;
+		pixel_components_step_ = image_.width() * image_.height() * image_.depth();
 	}
 
 	void Image::createImage(const std::string& path, int rows, int columns)
@@ -26,6 +27,7 @@ namespace Dithering
 		}
 
 		path_ = path;
+		pixel_components_step_ = image_.width() * image_.height() * image_.depth();
 	}
 
 	void Image::saveImage() const
@@ -37,22 +39,5 @@ namespace Dithering
 	{
 		rows = image_.height();
 		columns = image_.width();
-	}
-
-	Color Image::getColor(int row, int column) const
-	{
-		return
-		{
-			*image_.data(column, row, 0, 0),
-			*image_.data(column, row, 0, 1),
-			*image_.data(column, row, 0, 2)
-		};
-	}
-
-	void Image::setColor(const Color &new_color, int row, int column)
-	{
-		*image_.data(column, row, 0, 0) = new_color[0];
-		*image_.data(column, row, 0, 1) = new_color[1];
-		*image_.data(column, row, 0, 2) = new_color[2];
 	}
 }

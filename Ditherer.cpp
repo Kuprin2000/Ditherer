@@ -26,17 +26,18 @@ namespace Dithering
 		color_selectors_[(int)Palette::VGA_256_COLORS].reset(new Vga256ColorsColorSelector());
 	}
 
-	void Ditherer::process(Image& input_image, Image& output_image, Palette palette, int algorithm_id, int threads_count) const
+	void Ditherer::process(Image& input_image, Image& output_image, Palette palette,
+		int algorithm_id, bool use_speed_up_structures, int threads_count) const
 	{
 		if (!algorithm_id)
 		{
 			if (threads_count == 1)
 			{
-				processSingleThread(input_image, output_image, palette);
+				processSingleThread(input_image, output_image, palette, use_speed_up_structures);
 			}
 			else if (threads_count > 1)
 			{
-				processMultiThread(input_image, output_image, palette, threads_count);
+				processMultiThread(input_image, output_image, palette, use_speed_up_structures, threads_count);
 			}
 		}
 
@@ -44,11 +45,11 @@ namespace Dithering
 		{
 			if (threads_count == 1)
 			{
-				processSingleThreadTwo(input_image, output_image, palette);
+				processSingleThreadTwo(input_image, output_image, palette, use_speed_up_structures);
 			}
 			else if (threads_count > 1)
 			{
-				processMultiThreadTwo(input_image, output_image, palette, threads_count);
+				processMultiThreadTwo(input_image, output_image, palette, use_speed_up_structures, threads_count);
 			}
 		}
 
@@ -58,8 +59,10 @@ namespace Dithering
 		}
 	}
 
-	void Ditherer::processSingleThread(Image& input_image, Image& output_image, Palette palette) const
+	void Ditherer::processSingleThread(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures) const
 	{
+		const auto* color_selector = color_selectors_[(int)palette].get();
+
 		int rows_count = 0;
 		int columns_count = 0;
 		input_image.getSize(rows_count, columns_count);
@@ -68,18 +71,20 @@ namespace Dithering
 		{
 			for (int j = 0; j < columns_count; ++j)
 			{
-				processPixel(input_image, output_image, palette, i, j);
+				processPixel(input_image, output_image, color_selector, i, j, use_speed_up_structures);
 			}
 		}
 	}
 
-	void Ditherer::processMultiThread(Image& input_image, Image& output_image, Palette palette, int threads_count) const
+	void Ditherer::processMultiThread(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures, int threads_count) const
 	{
 		if (threads_count % 3 && threads_count != 1)
 		{
 			threads_count -= threads_count % 3;
 		}
 		omp_set_num_threads(threads_count);
+
+		const auto* color_selector = color_selectors_[(int)palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -88,7 +93,7 @@ namespace Dithering
 		const auto iterations_count = columns_count + threads_count * 3;
 		std::vector<int> column_counters(threads_count, 0);
 
-#pragma omp parallel shared(column_counters)
+#pragma omp parallel default(shared)
 		{
 			const auto thread_id = omp_get_thread_num();
 
@@ -101,7 +106,7 @@ namespace Dithering
 					{
 						if (!thread_id || (thread_id && column_counters[thread_id - 1] > 3))
 						{
-							processPixel(input_image, output_image, palette, row + thread_id, column_counters[thread_id]);
+							processPixel(input_image, output_image, color_selector, row + thread_id, column_counters[thread_id], use_speed_up_structures);
 							++column_counters[thread_id];
 						}
 					}
@@ -112,8 +117,10 @@ namespace Dithering
 		}
 	}
 
-	void Ditherer::processSingleThreadTwo(Image& input_image, Image& output_image, Palette palette) const
+	void Ditherer::processSingleThreadTwo(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures) const
 	{
+		const auto* color_selector = color_selectors_[(int)palette].get();
+
 		int rows_count = 0;
 		int columns_count = 0;
 		input_image.getSize(rows_count, columns_count);
@@ -128,16 +135,18 @@ namespace Dithering
 
 			for (int j = 0; j < elements_count; ++j)
 			{
-				processPixel(input_image, output_image, palette, row, column);
+				processPixel(input_image, output_image, color_selector, row, column, use_speed_up_structures);
 				++row;
 				column -= 3;
 			}
 		}
 	}
 
-	void Ditherer::processMultiThreadTwo(Image& input_image, Image& output_image, Palette palette, int threads_count) const
+	void Ditherer::processMultiThreadTwo(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures, int threads_count) const
 	{
 		omp_set_num_threads(threads_count);
+
+		const auto* color_selector = color_selectors_[(int)palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -151,19 +160,19 @@ namespace Dithering
 			int column = i - row * 3;
 
 			const auto elements_count = std::min(1 + column / 3, rows_count - row);
-#pragma omp parallel for
+#pragma omp parallel for default(shared)
 			for (int j = 0; j < elements_count; ++j)
 			{
-				processPixel(input_image, output_image, palette, row + j, column - 3 * j);
+				processPixel(input_image, output_image, color_selector, row + j, column - 3 * j, use_speed_up_structures);
 			}
 		}
 	}
 
-	void Ditherer::processPixel(Image& input_image, Image& output_image, Palette palette, int row, int column) const
+	void Ditherer::processPixel(Image& input_image, Image& output_image, const IColorSelector* color_selector, int row, int column, bool use_speed_up_structures) const
 	{
 		auto optimal_color = 0;
-		std::array<int, 3> mistake = { 0 };
-		const auto color = color_selectors_[(int)palette]->findOptimalColor(input_image, row, column, mistake);
+		std::array<int, 3> mistake;
+		const auto color = color_selector->findOptimalColor(input_image, row, column, mistake, use_speed_up_structures);
 		output_image.setColor(color, row, column);
 
 		auto rows_count = 0;
@@ -179,17 +188,17 @@ namespace Dithering
 		if (column + 1 < columns_count)
 		{
 			tmp_color = input_image.getColor(row, column + 1);
-			tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_7_48[0], 0, 255);
-			tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_7_48[1], 0, 255);
-			tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_7_48[2], 0, 255);
+			tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_7_48[0]);
+			tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_7_48[1]);
+			tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_7_48[2]);
 			input_image.setColor(tmp_color, row, column + 1);
 		}
 		if (column + 2 < columns_count)
 		{
 			tmp_color = input_image.getColor(row, column + 2);
-			tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_5_48[0], 0, 255);
-			tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_5_48[1], 0, 255);
-			tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_5_48[2], 0, 255);
+			tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_5_48[0]);
+			tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_5_48[1]);
+			tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_5_48[2]);
 			input_image.setColor(tmp_color, row, column + 2);
 		}
 
@@ -199,40 +208,40 @@ namespace Dithering
 			if (column - 2 > 0)
 			{
 				tmp_color = input_image.getColor(row, column - 2);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_3_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_3_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_3_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_3_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_3_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_3_48[2]);
 				input_image.setColor(tmp_color, row, column - 2);
 			}
 			if (column - 1 > 0)
 			{
 				tmp_color = input_image.getColor(row, column - 1);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_5_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_5_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_5_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_5_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_5_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_5_48[2]);
 				input_image.setColor(tmp_color, row, column - 1);
 			}
 
 			tmp_color = input_image.getColor(row, column);
-			tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_7_48[0], 0, 255);
-			tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_7_48[1], 0, 255);
-			tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_7_48[2], 0, 255);
+			tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_7_48[0]);
+			tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_7_48[1]);
+			tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_7_48[2]);
 			input_image.setColor(tmp_color, row, column);
 
 			if (column + 1 < columns_count)
 			{
 				tmp_color = input_image.getColor(row, column + 1);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_5_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_5_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_5_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_5_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_5_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_5_48[2]);
 				input_image.setColor(tmp_color, row, column + 1);
 			}
 			if (column + 2 < columns_count)
 			{
 				tmp_color = input_image.getColor(row, column + 2);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_3_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_3_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_3_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_3_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_3_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_3_48[2]);
 				input_image.setColor(tmp_color, row, column + 2);
 			}
 		}
@@ -243,40 +252,40 @@ namespace Dithering
 			if (column - 2 > 0)
 			{
 				tmp_color = input_image.getColor(row, column - 2);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_1_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_1_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_1_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_1_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_1_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_1_48[2]);
 				input_image.setColor(tmp_color, row, column - 2);
 			}
 			if (column - 1 > 0)
 			{
 				tmp_color = input_image.getColor(row, column - 1);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_3_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_3_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_3_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_3_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_3_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_3_48[2]);
 				input_image.setColor(tmp_color, row, column - 1);
 			}
 
 			tmp_color = input_image.getColor(row, column);
-			tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_5_48[0], 0, 255);
-			tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_5_48[1], 0, 255);
-			tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_5_48[2], 0, 255);
+			tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_5_48[0]);
+			tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_5_48[1]);
+			tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_5_48[2]);
 			input_image.setColor(tmp_color, row, column);
 
 			if (column + 1 < columns_count)
 			{
 				tmp_color = input_image.getColor(row, column + 1);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_3_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_3_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_3_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_3_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_3_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_3_48[2]);
 				input_image.setColor(tmp_color, row, column + 1);
 			}
 			if (column + 2 < columns_count)
 			{
 				tmp_color = input_image.getColor(row, column + 2);
-				tmp_color[0] = (uint8_t)std::clamp((int)tmp_color[0] + mistake_1_48[0], 0, 255);
-				tmp_color[1] = (uint8_t)std::clamp((int)tmp_color[1] + mistake_1_48[1], 0, 255);
-				tmp_color[2] = (uint8_t)std::clamp((int)tmp_color[2] + mistake_1_48[2], 0, 255);
+				tmp_color[0] = clamp_color((int)tmp_color[0] + mistake_1_48[0]);
+				tmp_color[1] = clamp_color((int)tmp_color[1] + mistake_1_48[1]);
+				tmp_color[2] = clamp_color((int)tmp_color[2] + mistake_1_48[2]);
 				input_image.setColor(tmp_color, row, column + 2);
 			}
 		}

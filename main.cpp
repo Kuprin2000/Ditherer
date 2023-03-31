@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[])
 {
-	if (argc != 6)
+	if (argc != 7)
 	{
 		std::cout << "You must type following arguments:" <<
 			std::endl << "I) Input image path;" <<
@@ -26,10 +26,11 @@ int main(int argc, char* argv[])
 			std::endl << "12) BK-0011 palette 10 (0011);" <<
 			std::endl << "13) BK-0011 palette 11 (0011);" <<
 			std::endl << "14) BK-0011 palette 12 (0011);" <<
-			std::endl << "15) VGA 16 colors (Neon);" <<
+			std::endl << "15) EGA 16 colors (Neon);" <<
 			std::endl << "16) VGA 256 colors (Neon);" <<
 			std::endl << "IV) Parallel algorithm type (0 or 1);" <<
-			std::endl << "V) Threads count;";
+			std::endl << "V) If we are using speed up data structures (0 or 1);" <<
+			std::endl << "VI) Threads count;";
 
 		return 0;
 	}
@@ -39,7 +40,8 @@ int main(int argc, char* argv[])
 
 	const auto palette_int = atoi(argv[3]);
 	const auto algorithm_id = atoi(argv[4]);
-	const auto threads_count = atoi(argv[5]);
+	const bool use_speed_up_structures = atoi(argv[5]);
+	const auto threads_count = atoi(argv[6]);
 
 	if (threads_count < 1 || threads_count > 1000
 		|| algorithm_id < 0 || algorithm_id > 1
@@ -80,7 +82,7 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		ditherer.process(input_image, output_image, pallete, algorithm_id, threads_count);
+		ditherer.process(input_image, output_image, pallete, algorithm_id, use_speed_up_structures, threads_count);
 	}
 	catch (...)
 	{
