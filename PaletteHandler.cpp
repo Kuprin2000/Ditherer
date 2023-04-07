@@ -1,9 +1,16 @@
-#include "ColorSelector.h"
+#include "PaletteHandler.h"
 
 namespace Dithering
 {
-	Dithering::BlackAndWhiteColorSelector::BlackAndWhiteColorSelector()
+	const std::string& IPaletteHandler::get_name() const
 	{
+		return name_;
+	}
+
+	BlackAndWhiteHandler::BlackAndWhiteHandler()
+	{
+		name_ = "Black and white";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 255, 255, 255 };
 
@@ -521,8 +528,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 1 };
 	}
 
-	BlackGrayAndWhiteColorSelector::BlackGrayAndWhiteColorSelector()
+	BlackGrayAndWhiteHandler::BlackGrayAndWhiteHandler()
 	{
+		name_ = "Black, gray and white";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 128, 128, 128 };
 		palette_[2] = { 255, 255, 255 };
@@ -1041,8 +1050,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 1, 2 };
 	}
 
-	TwoBitGrayscaleColorSelector::TwoBitGrayscaleColorSelector()
+	TwoBitGrayscaleHandler::TwoBitGrayscaleHandler()
 	{
+		name_ = "Two bits grayscale ";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 85, 85, 85 };
 		palette_[2] = { 170, 170, 170 };
@@ -1562,8 +1573,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 2, 3 };
 	}
 
-	FourBitGrayscaleColorSelector::FourBitGrayscaleColorSelector()
+	FourBitGrayscaleHandler::FourBitGrayscaleHandler()
 	{
+		name_ = "Four bits grayscale";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 17, 17, 17 };
 		palette_[2] = { 34, 34, 34 };
@@ -2095,8 +2108,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 	}
 
-	BlackRedGreenBlueColorSelector::BlackRedGreenBlueColorSelector()
+	BlackRedGreenBlueHandler::BlackRedGreenBlueHandler()
 	{
+		name_ = "Black, red green, blue and white";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 255, 0, 0 };
 		palette_[2] = { 0, 255, 0 };
@@ -2616,8 +2631,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 1, 2, 3 };
 	}
 
-	Palette1ColorSelector::Palette1ColorSelector()
+	Palette1Handler::Palette1Handler()
 	{
+		name_ = "BK 0011 palette 1";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 255, 255, 0 };
 		palette_[2] = { 255, 0, 255 };
@@ -3137,8 +3154,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 1, 2, 3 };
 	}
 
-	Palette2ColorSelector::Palette2ColorSelector()
+	Palette2Handler::Palette2Handler()
 	{
+		name_ = "BK 0011 palette 2";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 0, 255, 255 };
 		palette_[2] = { 0, 0, 255 };
@@ -3659,8 +3678,10 @@ namespace Dithering
 
 	}
 
-	Palette3ColorSelector::Palette3ColorSelector()
+	Palette3Handler::Palette3Handler()
 	{
+		name_ = "BK 0011 palette 3";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 0, 255, 0 };
 		palette_[2] = { 0, 255, 255 };
@@ -4181,8 +4202,10 @@ namespace Dithering
 
 	}
 
-	Palette6ColorSelector::Palette6ColorSelector()
+	Palette6Handler::Palette6Handler()
 	{
+		name_ = "BK 0011 palette 6";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 192, 0, 0 };
 		palette_[2] = { 144, 0, 0 };
@@ -4703,8 +4726,10 @@ namespace Dithering
 
 	}
 
-	Palette7ColorSelector::Palette7ColorSelector()
+	Palette7Handler::Palette7Handler()
 	{
+		name_ = "BK 0011 palette 7";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 192, 255, 0 };
 		palette_[2] = { 144, 255, 0 };
@@ -5225,8 +5250,10 @@ namespace Dithering
 
 	}
 
-	Palette8ColorSelector::Palette8ColorSelector()
+	Palette8Handler::Palette8Handler()
 	{
+		name_ = "BK 0011 palette 8";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 192, 0, 255 };
 		palette_[2] = { 144, 0, 255 };
@@ -5747,8 +5774,10 @@ namespace Dithering
 
 	}
 
-	Palette9ColorSelector::Palette9ColorSelector()
+	Palette9Handler::Palette9Handler()
 	{
+		name_ = "BK 0011 palette 9";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 144, 255, 0 };
 		palette_[2] = { 144, 0, 255 };
@@ -6269,8 +6298,10 @@ namespace Dithering
 
 	}
 
-	Palette10ColorSelector::Palette10ColorSelector()
+	Palette10Handler::Palette10Handler()
 	{
+		name_ = "BK 0011 palette 10";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 192, 255, 0 };
 		palette_[2] = { 192, 0, 255 };
@@ -6791,8 +6822,10 @@ namespace Dithering
 
 	}
 
-	Palette11ColorSelector::Palette11ColorSelector()
+	Palette11Handler::Palette11Handler()
 	{
+		name_ = "BK 0011 palette 11";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 0, 255, 255 };
 		palette_[2] = { 255, 255, 0 };
@@ -7313,8 +7346,10 @@ namespace Dithering
 
 	}
 
-	Palette12ColorSelector::Palette12ColorSelector()
+	Palette12Handler::Palette12Handler()
 	{
+		name_ = "BK 0011 palette 12";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 255, 0, 0 };
 		palette_[2] = { 0, 255, 0 };
@@ -7835,8 +7870,10 @@ namespace Dithering
 
 	}
 
-	Ega16ColorsColorSelector::Ega16ColorsColorSelector()
+	Ega16ColorsHandler::Ega16ColorsHandler()
 	{
+		name_ = "EGA 16 colors";
+
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 0, 0, 170 };
 		palette_[2] = { 0, 170, 0 };
@@ -8368,8 +8405,10 @@ namespace Dithering
 		colors_for_segments_[7][7][7] = { 7, 13, 14, 15 };
 	}
 
-	Vga256ColorsColorSelector::Vga256ColorsColorSelector()
+	Vga256ColorsHandler::Vga256ColorsHandler()
 	{
+		name_ = "VGA 256 colors";
+
 		palette_[1] = { 0, 0, 0 };
 		palette_[2] = { 0, 2, 170 };
 		palette_[3] = { 20, 170, 0 };

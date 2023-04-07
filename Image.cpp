@@ -2,32 +2,34 @@
 
 namespace Dithering
 {
-	void Image::openImage(const std::string& path)
+	bool Image::openImage(const std::string& path)
 	{
 		image_.load(path.c_str());
 
 		if (!image_)
 		{
-			std::string message = "Can't open file ";
-			message += path;
-			throw std::exception(message.c_str());
+			return false;
 		}
 
 		path_ = path;
 		pixel_components_step_ = image_.width() * image_.height() * image_.depth();
+
+		return true;
 	}
 
-	void Image::createImage(const std::string& path, int rows, int columns)
+	bool Image::createImage(const std::string& path, int rows, int columns)
 	{
 		image_ = cimg_library::CImg<unsigned char>(columns, rows, 1, 3, 0);
 
 		if (!image_)
 		{
-			throw std::exception("Can't allocate memory for the new image");
+			return false;
 		}
 
 		path_ = path;
 		pixel_components_step_ = image_.width() * image_.height() * image_.depth();
+
+		return true;
 	}
 
 	void Image::saveImage() const

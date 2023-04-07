@@ -1,107 +1,177 @@
 #include <iostream>
 #include <cstdlib>
 #include <chrono>
+#include "imgui/imgui.h"
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
 #include "Ditherer.h"
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(GLFWwindow* window);
+
+static const int START_WINDOW_WIDTH = 500;
+static const int START_WINDOW_HEIGHT = 700;
 
 int main(int argc, char* argv[])
 {
-	if (argc != 7)
-	{
-		std::cout << "You must type following arguments:" <<
-			std::endl << "I) Input image path;" <<
-			std::endl << "II) Output image path;" <<
-			std::endl << "III) Color palette:" <<
-			std::endl << "0) Black and white (0010, 0011, Neon);" <<
-			std::endl << "1) Black, gray and white (0011);" <<
-			std::endl << "2) Two-bit grayscale (Neon);" <<
-			std::endl << "3) Four-bit grayscale (Neon);" <<
-			std::endl << "4) Black, red, green, blue (0010, 0011);" <<
-			std::endl << "5) BK-0011 palette 1 (0011);" <<
-			std::endl << "6) BK-0011 palette 2 (0011);" <<
-			std::endl << "7) BK-0011 palette 3 (0011);" <<
-			std::endl << "8) BK-0011 palette 6 (0011);" <<
-			std::endl << "9) BK-0011 palette 7 (0011);" <<
-			std::endl << "10) BK-0011 palette 8 (0011);" <<
-			std::endl << "11) BK-0011 palette 9 (0011);" <<
-			std::endl << "12) BK-0011 palette 10 (0011);" <<
-			std::endl << "13) BK-0011 palette 11 (0011);" <<
-			std::endl << "14) BK-0011 palette 12 (0011);" <<
-			std::endl << "15) EGA 16 colors (Neon);" <<
-			std::endl << "16) VGA 256 colors (Neon);" <<
-			std::endl << "IV) Parallel algorithm type (0 or 1);" <<
-			std::endl << "V) If we are using speed up data structures (0 or 1);" <<
-			std::endl << "VI) Threads count;";
+	// init opengl
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	GLFWwindow* window = glfwCreateWindow(START_WINDOW_WIDTH, START_WINDOW_HEIGHT, "Ditherer", NULL, NULL);
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-		return 0;
+	// init imgui
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+	// create ditherer
+	std::vector<std::unique_ptr<Dithering::IDitherer>> ditherers((int)Dithering::Ditherer::COUNT);
+	ditherers[0].reset(new Dithering::JJNDitherer(1, 1));
+
+	std::vector<const char*> ditherers_names((int)Dithering::Ditherer::COUNT);
+	for (int i = 0; i < (int)Dithering::Ditherer::COUNT; ++i)
+	{
+		ditherers_names[i] = ditherers[i]->get_name().c_str();
 	}
 
-	std::string input_path = argv[1];
-	std::string output_path = argv[2];
+	// prepare for loop
+	auto current_ditherer_id = 0;
+	auto current_palette_id = 0;
+	char input_file_path[256];
+	input_file_path[0] = '\0';
+	char output_file_path[256];
+	output_file_path[0] = '\0';
+	auto current_threads_count = 1;
+	std::string dither_time = "Time dithering took: 0";
 
-	const auto palette_int = atoi(argv[3]);
-	const auto algorithm_id = atoi(argv[4]);
-	const bool use_speed_up_structures = atoi(argv[5]);
-	const auto threads_count = atoi(argv[6]);
-
-	if (threads_count < 1 || threads_count > 1000
-		|| algorithm_id < 0 || algorithm_id > 1
-		|| palette_int < 0 || palette_int >= Dithering::PALLETTES_COUNT)
+	std::vector<const char*> palletes_names(ditherers[current_ditherer_id]->get_palletes_count());
 	{
-		std::cout << "You typed wrong parameters" << std::endl;
-		return 1;
+		const auto& current_ditherer_palletes_names = ditherers[current_ditherer_id]->get_palletes_names();
+		for (int i = 0; i < (int)current_ditherer_palletes_names.size(); ++i)
+		{
+			palletes_names[i] = current_ditherer_palletes_names[i].c_str();
+		}
 	}
 
-	const auto pallete = (Dithering::Palette)palette_int;
-
-	Dithering::Image input_image;
-	try
+	// main loop
+	while (!glfwWindowShouldClose(window))
 	{
-		input_image.openImage(input_path);
-	}
-	catch (...)
-	{
-		std::cout << "Can't open input file";
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		processInput(window);
+
+		ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2((float)START_WINDOW_WIDTH, (float)START_WINDOW_HEIGHT), ImGuiCond_Always);
+
+		ImGui::Begin("Ditherer", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_::ImGuiWindowFlags_NoResize);
+
+		ImGui::Text("Choose ditherer");
+		if (ImGui::ListBox("Ditherer", &current_ditherer_id, ditherers_names.data(), (int)ditherers_names.size()))
+		{
+			palletes_names.resize(ditherers[current_ditherer_id]->get_palletes_count());
+			const auto& current_ditherer_palletes_names = ditherers[current_ditherer_id]->get_palletes_names();
+			for (int i = 0; i < current_ditherer_palletes_names.size(); ++i)
+			{
+				palletes_names[i] = current_ditherer_palletes_names[i].c_str();
+			}
+		}
+
+		ImGui::Text("Choose palette");
+		ImGui::ListBox("Palette", &current_palette_id, palletes_names.data(), (int)palletes_names.size());
+
+		ImGui::Text("Choose files");
+		ImGui::InputText("Input file", input_file_path, 100);
+		ImGui::InputText("Output file", output_file_path, 100);
+
+		ImGui::Text("Threads count");
+		ImGui::InputInt("Input threads count", &current_threads_count, 1, 5);
+		current_threads_count = std::clamp(current_threads_count, 1, 128);
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+
+		if (ImGui::Button("Dither"))
+		{
+			try
+			{
+				Dithering::Image input_image;
+
+				if (!input_image.openImage(input_file_path))
+				{
+					break;
+				}
+
+				auto rows = 0;
+				auto columns = 0;
+				input_image.getSize(rows, columns);
+
+				Dithering::Image output_image;
+				if (!output_image.createImage(output_file_path, rows, columns))
+				{
+					break;
+				}
+
+				const auto start_time = std::chrono::high_resolution_clock::now();
+
+				if (!ditherers[current_ditherer_id]->process(input_image, output_image, current_palette_id, current_threads_count))
+				{
+					break;
+				}
+
+				dither_time = "Time dithering took: " +
+					std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count());
+
+				output_image.saveImage();
+			}
+			catch (...)
+			{
+				std::cout << "There was error while dithering" << std::endl;
+			}
+		}
+
+		ImGui::Text(dither_time.c_str());
+
+		ImGui::End();
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
 	}
 
-	auto rows = 0;
-	auto columns = 0;
-	input_image.getSize(rows, columns);
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
-	Dithering::Image output_image;
-	try
-	{
-		output_image.createImage(output_path, rows, columns);
-	}
-	catch (...)
-	{
-		std::cout << "Can't create output file";
-	}
-
-	Dithering::Ditherer ditherer;
-	const auto start_time = std::chrono::high_resolution_clock::now();
-
-	try
-	{
-		ditherer.process(input_image, output_image, pallete, algorithm_id, use_speed_up_structures, threads_count);
-	}
-	catch (...)
-	{
-		std::cout << "Can't dither image";
-	}
-
-	const auto end_time = std::chrono::high_resolution_clock::now();
-
-	std::cout << "We proceeded image with resolution " << columns << "x" << rows << " at " <<
-		std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() << " milliseconds";
-
-	try
-	{
-		output_image.saveImage();
-	}
-	catch (...)
-	{
-		std::cout << "Can't save the result";
-	}
-
+	glfwDestroyWindow(window);
+	glfwTerminate();
 	return 0;
+}
+
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, 1);
+	}
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
 }

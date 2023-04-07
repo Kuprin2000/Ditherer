@@ -5,11 +5,8 @@
 
 namespace Dithering
 {
-	static constexpr auto PALLETTES_COUNT = 17;
 	static constexpr auto SEGMENTS_PER_AXIS = 8;
 	static constexpr auto STEP = 256 / SEGMENTS_PER_AXIS;
-	static constexpr uint8_t COLORS_PER_PALETTE[PALLETTES_COUNT] = { 2, 3, 4, 16, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 16, 249 };
-
 	using ColorsForSegments = std::vector<uint8_t>[SEGMENTS_PER_AXIS][SEGMENTS_PER_AXIS][SEGMENTS_PER_AXIS];
 
 	enum class Palette : uint8_t
@@ -30,184 +27,192 @@ namespace Dithering
 		BK_0011_PALETTE_11,
 		BK_0011_PALETTE_12,
 		EGA_16_COLORS,
-		VGA_256_COLORS
+		VGA_256_COLORS,
+		COUNT
 	};
 
-	class IColorSelector
+	static constexpr uint8_t COLORS_PER_PALETTE[(int)Palette::COUNT] = { 2, 3, 4, 16, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 16, 249 };
+
+	class IPaletteHandler
 	{
 	public:
-		IColorSelector() = default;
+		IPaletteHandler() = default;
 
-		IColorSelector(const IColorSelector& selector) = delete;
+		IPaletteHandler(const IPaletteHandler& Handler) = delete;
 
-		void operator=(const IColorSelector& selector) = delete;
+		void operator=(const IPaletteHandler& Handler) = delete;
 
 		_NODISCARD virtual Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const = 0;
 
-		virtual ~IColorSelector() = default;
+		_NODISCARD const std::string& get_name() const;
+
+		virtual ~IPaletteHandler() = default;
+
+	protected:
+		std::string name_ = "No name";
 	};
 
-	class BlackAndWhiteColorSelector : public IColorSelector
+	class BlackAndWhiteHandler : public IPaletteHandler
 	{
 	public:
-		BlackAndWhiteColorSelector();
+		BlackAndWhiteHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BLACK_AND_WHITE]];
+		Color palette_[2];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class BlackGrayAndWhiteColorSelector : public IColorSelector
+	class BlackGrayAndWhiteHandler : public IPaletteHandler
 	{
 	public:
-		BlackGrayAndWhiteColorSelector();
+		BlackGrayAndWhiteHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BLACK_GRAY_AND_WHITE]];
+		Color palette_[3];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class TwoBitGrayscaleColorSelector : public IColorSelector
+	class TwoBitGrayscaleHandler : public IPaletteHandler
 	{
 	public:
-		TwoBitGrayscaleColorSelector();
+		TwoBitGrayscaleHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::TWO_BIT_GRAYSCALE]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class FourBitGrayscaleColorSelector : public IColorSelector
+	class FourBitGrayscaleHandler : public IPaletteHandler
 	{
 	public:
-		FourBitGrayscaleColorSelector();
+		FourBitGrayscaleHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::FOUR_BIT_GRAYSCALE]];
+		Color palette_[16];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class BlackRedGreenBlueColorSelector : public IColorSelector
+	class BlackRedGreenBlueHandler : public IPaletteHandler
 	{
 	public:
-		BlackRedGreenBlueColorSelector();
+		BlackRedGreenBlueHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BLACK_RED_GREEN_BLUE]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette1ColorSelector : public IColorSelector
+	class Palette1Handler : public IPaletteHandler
 	{
 	public:
-		Palette1ColorSelector();
+		Palette1Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_1]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette2ColorSelector : public IColorSelector
+	class Palette2Handler : public IPaletteHandler
 	{
 	public:
-		Palette2ColorSelector();
+		Palette2Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_2]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette3ColorSelector : public IColorSelector
+	class Palette3Handler : public IPaletteHandler
 	{
 	public:
-		Palette3ColorSelector();
+		Palette3Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_3]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette6ColorSelector : public IColorSelector
+	class Palette6Handler : public IPaletteHandler
 	{
 	public:
-		Palette6ColorSelector();
+		Palette6Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_6]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette7ColorSelector : public IColorSelector
+	class Palette7Handler : public IPaletteHandler
 	{
 	public:
-		Palette7ColorSelector();
+		Palette7Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_7]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette8ColorSelector : public IColorSelector
+	class Palette8Handler : public IPaletteHandler
 	{
 	public:
-		Palette8ColorSelector();
+		Palette8Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_8]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette9ColorSelector : public IColorSelector
+	class Palette9Handler : public IPaletteHandler
 	{
 	public:
-		Palette9ColorSelector();
+		Palette9Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_9]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette10ColorSelector : public IColorSelector
+	class Palette10Handler : public IPaletteHandler
 	{
 	public:
-		Palette10ColorSelector();
+		Palette10Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
@@ -217,55 +222,55 @@ namespace Dithering
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette11ColorSelector : public IColorSelector
+	class Palette11Handler : public IPaletteHandler
 	{
 	public:
-		Palette11ColorSelector();
+		Palette11Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_11]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Palette12ColorSelector : public IColorSelector
+	class Palette12Handler : public IPaletteHandler
 	{
 	public:
-		Palette12ColorSelector();
+		Palette12Handler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::BK_0011_PALETTE_12]];
+		Color palette_[4];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Ega16ColorsColorSelector : public IColorSelector
+	class Ega16ColorsHandler : public IPaletteHandler
 	{
 	public:
-		Ega16ColorsColorSelector();
+		Ega16ColorsHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::EGA_16_COLORS]];
+		Color palette_[16];
 		ColorsForSegments colors_for_segments_;
 	};
 
-	class Vga256ColorsColorSelector : public IColorSelector
+	class Vga256ColorsHandler : public IPaletteHandler
 	{
 	public:
-		Vga256ColorsColorSelector();
+		Vga256ColorsHandler();
 
 		_NODISCARD Color findOptimalColor(const Image& input_image, int row,
 			int column, std::array<int, 3>& mistake, bool use_speed_structure) const override;
 
 	private:
-		Color palette_[COLORS_PER_PALETTE[(int)Palette::VGA_256_COLORS]];
+		Color palette_[256];
 		ColorsForSegments colors_for_segments_;
 	};
 
@@ -329,7 +334,7 @@ namespace Dithering
 		return palette[optimal_color_index];
 	}
 
-	__forceinline Color Dithering::BlackAndWhiteColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Dithering::BlackAndWhiteHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -341,7 +346,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color BlackGrayAndWhiteColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color BlackGrayAndWhiteHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -353,7 +358,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color TwoBitGrayscaleColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color TwoBitGrayscaleHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -365,7 +370,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color FourBitGrayscaleColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color FourBitGrayscaleHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -377,7 +382,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color BlackRedGreenBlueColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color BlackRedGreenBlueHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -389,7 +394,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette1ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette1Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -401,7 +406,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette2ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette2Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -413,7 +418,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette3ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette3Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -425,7 +430,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette6ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette6Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -437,7 +442,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette7ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette7Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -449,7 +454,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette8ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette8Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -461,7 +466,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette9ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette9Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -473,7 +478,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette10ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette10Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -485,7 +490,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette11ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette11Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -497,7 +502,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Palette12ColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Palette12Handler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -509,7 +514,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Ega16ColorsColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Ega16ColorsHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{
@@ -521,7 +526,7 @@ namespace Dithering
 		}
 	}
 
-	__forceinline Color Vga256ColorsColorSelector::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
+	__forceinline Color Vga256ColorsHandler::findOptimalColor(const Image& input_image, int row, int column, std::array<int, 3>& mistake, bool use_speed_up_structure) const
 	{
 		if (use_speed_up_structure)
 		{

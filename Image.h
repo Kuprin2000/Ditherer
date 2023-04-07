@@ -20,9 +20,9 @@ namespace Dithering
 
 		void operator=(const Image& image) = delete;
 
-		void openImage(const std::string& path);
+		_NODISCARD bool openImage(const std::string& path);
 
-		void createImage(const std::string& path, int rows, int columns);
+		_NODISCARD bool createImage(const std::string& path, int rows, int columns);
 
 		void saveImage() const;
 

@@ -3,65 +3,100 @@
 #include <vector>
 #include "Ditherer.h"
 
+namespace
+{
+	__forceinline _NODISCARD uint8_t clamp_color(int val)
+	{
+		auto result = (val < 0) ? 0 : val;
+		result = (val > 255) ? 255 : val;
+		return result;
+	}
+}
+
 namespace Dithering
 {
-	Ditherer::Ditherer()
+	const std::string& IDitherer::get_name() const
 	{
-		color_selectors_[(int)Palette::BLACK_AND_WHITE].reset(new BlackAndWhiteColorSelector());
-		color_selectors_[(int)Palette::BLACK_GRAY_AND_WHITE].reset(new BlackGrayAndWhiteColorSelector());
-		color_selectors_[(int)Palette::TWO_BIT_GRAYSCALE].reset(new TwoBitGrayscaleColorSelector());
-		color_selectors_[(int)Palette::FOUR_BIT_GRAYSCALE].reset(new FourBitGrayscaleColorSelector());
-		color_selectors_[(int)Palette::BLACK_RED_GREEN_BLUE].reset(new BlackRedGreenBlueColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_1].reset(new Palette1ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_2].reset(new Palette2ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_3].reset(new Palette3ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_6].reset(new Palette6ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_7].reset(new Palette7ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_8].reset(new Palette8ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_9].reset(new Palette9ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_10].reset(new Palette10ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_11].reset(new Palette11ColorSelector());
-		color_selectors_[(int)Palette::BK_0011_PALETTE_12].reset(new Palette12ColorSelector());
-		color_selectors_[(int)Palette::EGA_16_COLORS].reset(new Ega16ColorsColorSelector());
-		color_selectors_[(int)Palette::VGA_256_COLORS].reset(new Vga256ColorsColorSelector());
+		return name_;
 	}
 
-	void Ditherer::process(Image& input_image, Image& output_image, Palette palette,
-		int algorithm_id, bool use_speed_up_structures, int threads_count) const
+	JJNDitherer::JJNDitherer(int algorithm_id, bool use_speed_up_structures) :
+		algorithm_id_(algorithm_id), use_speed_up_structures_(use_speed_up_structures)
 	{
-		if (!algorithm_id)
+		name_ = "Jarvis-Judice-Ninke ditherer";
+
+		palette_handlers_[(int)Palette::BLACK_AND_WHITE].reset(new BlackAndWhiteHandler());
+		palette_handlers_[(int)Palette::BLACK_GRAY_AND_WHITE].reset(new BlackGrayAndWhiteHandler());
+		palette_handlers_[(int)Palette::TWO_BIT_GRAYSCALE].reset(new TwoBitGrayscaleHandler());
+		palette_handlers_[(int)Palette::FOUR_BIT_GRAYSCALE].reset(new FourBitGrayscaleHandler());
+		palette_handlers_[(int)Palette::BLACK_RED_GREEN_BLUE].reset(new BlackRedGreenBlueHandler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_1].reset(new Palette1Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_2].reset(new Palette2Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_3].reset(new Palette3Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_6].reset(new Palette6Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_7].reset(new Palette7Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_8].reset(new Palette8Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_9].reset(new Palette9Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_10].reset(new Palette10Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_11].reset(new Palette11Handler());
+		palette_handlers_[(int)Palette::BK_0011_PALETTE_12].reset(new Palette12Handler());
+		palette_handlers_[(int)Palette::EGA_16_COLORS].reset(new Ega16ColorsHandler());
+		palette_handlers_[(int)Palette::VGA_256_COLORS].reset(new Vga256ColorsHandler());
+
+		palette_handlers_names_.resize((int)Palette::COUNT);
+		for (int i = 0; i < palette_handlers_.size(); ++i)
+		{
+			palette_handlers_names_[i] = palette_handlers_[i]->get_name();
+		}
+	}
+
+	bool JJNDitherer::process(Image& input_image, Image& output_image, int palette, int threads_count) const
+	{
+		if (!algorithm_id_)
 		{
 			if (threads_count == 1)
 			{
-				processSingleThread(input_image, output_image, palette, use_speed_up_structures);
+				processSingleThread(input_image, output_image, palette);
 			}
 			else if (threads_count > 1)
 			{
-				processMultiThread(input_image, output_image, palette, use_speed_up_structures, threads_count);
+				processMultiThread(input_image, output_image, palette, threads_count);
 			}
 		}
 
-		else if (algorithm_id == 1)
+		else if (algorithm_id_ == 1)
 		{
 			if (threads_count == 1)
 			{
-				processSingleThreadTwo(input_image, output_image, palette, use_speed_up_structures);
+				processSingleThreadTwo(input_image, output_image, palette);
 			}
 			else if (threads_count > 1)
 			{
-				processMultiThreadTwo(input_image, output_image, palette, use_speed_up_structures, threads_count);
+				processMultiThreadTwo(input_image, output_image, palette, threads_count);
 			}
 		}
 
 		else
 		{
-			throw std::exception("Wrong algorithm id");
+			return false;
 		}
+
+		return true;
 	}
 
-	void Ditherer::processSingleThread(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures) const
+	int JJNDitherer::get_palletes_count() const
 	{
-		const auto* color_selector = color_selectors_[(int)palette].get();
+		return (int)palette_handlers_.size();
+	}
+
+	const std::vector<std::string>& JJNDitherer::get_palletes_names() const
+	{
+		return palette_handlers_names_;
+	}
+
+	void JJNDitherer::processSingleThread(Image& input_image, Image& output_image, int palette) const
+	{
+		const auto* color_selector = palette_handlers_[palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -71,12 +106,12 @@ namespace Dithering
 		{
 			for (int j = 0; j < columns_count; ++j)
 			{
-				processPixel(input_image, output_image, color_selector, i, j, use_speed_up_structures);
+				processPixel(input_image, output_image, color_selector, i, j);
 			}
 		}
 	}
 
-	void Ditherer::processMultiThread(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures, int threads_count) const
+	void JJNDitherer::processMultiThread(Image& input_image, Image& output_image, int palette, int threads_count) const
 	{
 		if (threads_count % 3 && threads_count != 1)
 		{
@@ -84,7 +119,7 @@ namespace Dithering
 		}
 		omp_set_num_threads(threads_count);
 
-		const auto* color_selector = color_selectors_[(int)palette].get();
+		const auto* color_selector = palette_handlers_[palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -106,7 +141,7 @@ namespace Dithering
 					{
 						if (!thread_id || (thread_id && column_counters[thread_id - 1] > 3))
 						{
-							processPixel(input_image, output_image, color_selector, row + thread_id, column_counters[thread_id], use_speed_up_structures);
+							processPixel(input_image, output_image, color_selector, row + thread_id, column_counters[thread_id]);
 							++column_counters[thread_id];
 						}
 					}
@@ -117,9 +152,9 @@ namespace Dithering
 		}
 	}
 
-	void Ditherer::processSingleThreadTwo(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures) const
+	void JJNDitherer::processSingleThreadTwo(Image& input_image, Image& output_image, int palette) const
 	{
-		const auto* color_selector = color_selectors_[(int)palette].get();
+		const auto* color_selector = palette_handlers_[palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -135,18 +170,18 @@ namespace Dithering
 
 			for (int j = 0; j < elements_count; ++j)
 			{
-				processPixel(input_image, output_image, color_selector, row, column, use_speed_up_structures);
+				processPixel(input_image, output_image, color_selector, row, column);
 				++row;
 				column -= 3;
 			}
 		}
 	}
 
-	void Ditherer::processMultiThreadTwo(Image& input_image, Image& output_image, Palette palette, bool use_speed_up_structures, int threads_count) const
+	void JJNDitherer::processMultiThreadTwo(Image& input_image, Image& output_image, int palette, int threads_count) const
 	{
 		omp_set_num_threads(threads_count);
 
-		const auto* color_selector = color_selectors_[(int)palette].get();
+		const auto* color_selector = palette_handlers_[palette].get();
 
 		int rows_count = 0;
 		int columns_count = 0;
@@ -163,16 +198,16 @@ namespace Dithering
 #pragma omp parallel for default(shared)
 			for (int j = 0; j < elements_count; ++j)
 			{
-				processPixel(input_image, output_image, color_selector, row + j, column - 3 * j, use_speed_up_structures);
+				processPixel(input_image, output_image, color_selector, row + j, column - 3 * j);
 			}
 		}
 	}
 
-	void Ditherer::processPixel(Image& input_image, Image& output_image, const IColorSelector* color_selector, int row, int column, bool use_speed_up_structures) const
+	void JJNDitherer::processPixel(Image& input_image, Image& output_image, const IPaletteHandler* color_selector, int row, int column) const
 	{
 		auto optimal_color = 0;
 		std::array<int, 3> mistake;
-		const auto color = color_selector->findOptimalColor(input_image, row, column, mistake, use_speed_up_structures);
+		const auto color = color_selector->findOptimalColor(input_image, row, column, mistake, use_speed_up_structures_);
 		output_image.setColor(color, row, column);
 
 		auto rows_count = 0;
