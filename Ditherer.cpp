@@ -8,7 +8,7 @@ namespace
 	__forceinline _NODISCARD uint8_t clamp_color(int val)
 	{
 		auto result = (val < 0) ? 0 : val;
-		result = (val > 255) ? 255 : val;
+		result = (result > 255) ? 255 : result;
 		return result;
 	}
 }
@@ -20,11 +20,21 @@ namespace Dithering
 		return name_;
 	}
 
-	JJNDitherer::JJNDitherer(int algorithm_id, bool use_speed_up_structures) :
-		algorithm_id_(algorithm_id), use_speed_up_structures_(use_speed_up_structures)
+	int IDitherer::get_palettes_count() const
+	{
+		return (int)palette_handlers_.size();
+	}
+
+	const std::vector<std::string>& IDitherer::get_palettes_names() const
+	{
+		return palette_handlers_names_;
+	}
+
+	JJNDitherer::JJNDitherer(bool use_speed_up_structures) :use_speed_up_structures_(use_speed_up_structures)
 	{
 		name_ = "Jarvis-Judice-Ninke ditherer";
 
+		palette_handlers_.resize((int)Palette::COUNT);
 		palette_handlers_[(int)Palette::BLACK_AND_WHITE].reset(new BlackAndWhiteHandler());
 		palette_handlers_[(int)Palette::BLACK_GRAY_AND_WHITE].reset(new BlackGrayAndWhiteHandler());
 		palette_handlers_[(int)Palette::TWO_BIT_GRAYSCALE].reset(new TwoBitGrayscaleHandler());
@@ -52,107 +62,19 @@ namespace Dithering
 
 	bool JJNDitherer::process(Image& input_image, Image& output_image, int palette, int threads_count) const
 	{
-		if (!algorithm_id_)
+		if (threads_count == 1)
 		{
-			if (threads_count == 1)
-			{
-				processSingleThread(input_image, output_image, palette);
-			}
-			else if (threads_count > 1)
-			{
-				processMultiThread(input_image, output_image, palette, threads_count);
-			}
+			processSingleThread(input_image, output_image, palette);
 		}
-
-		else if (algorithm_id_ == 1)
+		else if (threads_count > 1)
 		{
-			if (threads_count == 1)
-			{
-				processSingleThreadTwo(input_image, output_image, palette);
-			}
-			else if (threads_count > 1)
-			{
-				processMultiThreadTwo(input_image, output_image, palette, threads_count);
-			}
-		}
-
-		else
-		{
-			return false;
+			processMultiThread(input_image, output_image, palette, threads_count);
 		}
 
 		return true;
 	}
 
-	int JJNDitherer::get_palletes_count() const
-	{
-		return (int)palette_handlers_.size();
-	}
-
-	const std::vector<std::string>& JJNDitherer::get_palletes_names() const
-	{
-		return palette_handlers_names_;
-	}
-
 	void JJNDitherer::processSingleThread(Image& input_image, Image& output_image, int palette) const
-	{
-		const auto* color_selector = palette_handlers_[palette].get();
-
-		int rows_count = 0;
-		int columns_count = 0;
-		input_image.getSize(rows_count, columns_count);
-
-		for (int i = 0; i < rows_count; ++i)
-		{
-			for (int j = 0; j < columns_count; ++j)
-			{
-				processPixel(input_image, output_image, color_selector, i, j);
-			}
-		}
-	}
-
-	void JJNDitherer::processMultiThread(Image& input_image, Image& output_image, int palette, int threads_count) const
-	{
-		if (threads_count % 3 && threads_count != 1)
-		{
-			threads_count -= threads_count % 3;
-		}
-		omp_set_num_threads(threads_count);
-
-		const auto* color_selector = palette_handlers_[palette].get();
-
-		int rows_count = 0;
-		int columns_count = 0;
-		input_image.getSize(rows_count, columns_count);
-
-		const auto iterations_count = columns_count + threads_count * 3;
-		std::vector<int> column_counters(threads_count, 0);
-
-#pragma omp parallel default(shared)
-		{
-			const auto thread_id = omp_get_thread_num();
-
-			for (int row = 0; row < rows_count; row += threads_count)
-			{
-				column_counters[thread_id] = 0;
-				for (int iteration = 0; iteration < iterations_count; ++iteration)
-				{
-					if (row + thread_id < rows_count && column_counters[thread_id] < columns_count)
-					{
-						if (!thread_id || (thread_id && column_counters[thread_id - 1] > 3))
-						{
-							processPixel(input_image, output_image, color_selector, row + thread_id, column_counters[thread_id]);
-							++column_counters[thread_id];
-						}
-					}
-
-#pragma omp barrier
-				}
-			}
-		}
-	}
-
-	void JJNDitherer::processSingleThreadTwo(Image& input_image, Image& output_image, int palette) const
 	{
 		const auto* color_selector = palette_handlers_[palette].get();
 
@@ -177,7 +99,7 @@ namespace Dithering
 		}
 	}
 
-	void JJNDitherer::processMultiThreadTwo(Image& input_image, Image& output_image, int palette, int threads_count) const
+	void JJNDitherer::processMultiThread(Image& input_image, Image& output_image, int palette, int threads_count) const
 	{
 		omp_set_num_threads(threads_count);
 

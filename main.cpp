@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 
 	// create ditherer
 	std::vector<std::unique_ptr<Dithering::IDitherer>> ditherers((int)Dithering::Ditherer::COUNT);
-	ditherers[0].reset(new Dithering::JJNDitherer(1, 1));
+	ditherers[0].reset(new Dithering::JJNDitherer(true));
 
 	std::vector<const char*> ditherers_names((int)Dithering::Ditherer::COUNT);
 	for (int i = 0; i < (int)Dithering::Ditherer::COUNT; ++i)
@@ -51,14 +51,14 @@ int main(int argc, char* argv[])
 	char output_file_path[256];
 	output_file_path[0] = '\0';
 	auto current_threads_count = 1;
-	std::string dither_time = "Time dithering took: 0";
+	std::string dither_time = "Dithering took: 0 milliseconds";
 
-	std::vector<const char*> palletes_names(ditherers[current_ditherer_id]->get_palletes_count());
+	std::vector<const char*> palettes_names(ditherers[current_ditherer_id]->get_palettes_count());
 	{
-		const auto& current_ditherer_palletes_names = ditherers[current_ditherer_id]->get_palletes_names();
-		for (int i = 0; i < (int)current_ditherer_palletes_names.size(); ++i)
+		const auto& current_ditherer_palettes_names = ditherers[current_ditherer_id]->get_palettes_names();
+		for (int i = 0; i < (int)current_ditherer_palettes_names.size(); ++i)
 		{
-			palletes_names[i] = current_ditherer_palletes_names[i].c_str();
+			palettes_names[i] = current_ditherer_palettes_names[i].c_str();
 		}
 	}
 
@@ -82,16 +82,16 @@ int main(int argc, char* argv[])
 		ImGui::Text("Choose ditherer");
 		if (ImGui::ListBox("Ditherer", &current_ditherer_id, ditherers_names.data(), (int)ditherers_names.size()))
 		{
-			palletes_names.resize(ditherers[current_ditherer_id]->get_palletes_count());
-			const auto& current_ditherer_palletes_names = ditherers[current_ditherer_id]->get_palletes_names();
-			for (int i = 0; i < current_ditherer_palletes_names.size(); ++i)
+			palettes_names.resize(ditherers[current_ditherer_id]->get_palettes_count());
+			const auto& current_ditherer_palettes_names = ditherers[current_ditherer_id]->get_palettes_names();
+			for (int i = 0; i < current_ditherer_palettes_names.size(); ++i)
 			{
-				palletes_names[i] = current_ditherer_palletes_names[i].c_str();
+				palettes_names[i] = current_ditherer_palettes_names[i].c_str();
 			}
 		}
 
 		ImGui::Text("Choose palette");
-		ImGui::ListBox("Palette", &current_palette_id, palletes_names.data(), (int)palletes_names.size());
+		ImGui::ListBox("Palette", &current_palette_id, palettes_names.data(), (int)palettes_names.size());
 
 		ImGui::Text("Choose files");
 		ImGui::InputText("Input file", input_file_path, 100);
@@ -132,14 +132,16 @@ int main(int argc, char* argv[])
 					break;
 				}
 
-				dither_time = "Time dithering took: " +
-					std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count());
+				dither_time = "Dithering took: " +
+					std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) +
+					" milliseconds";
 
 				output_image.saveImage();
 			}
 			catch (...)
 			{
 				std::cout << "There was error while dithering" << std::endl;
+				dither_time = "Dithering took: 0 milliseconds";
 			}
 		}
 
