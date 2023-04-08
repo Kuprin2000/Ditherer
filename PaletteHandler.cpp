@@ -2110,7 +2110,7 @@ namespace Dithering
 
 	BlackRedGreenBlueHandler::BlackRedGreenBlueHandler()
 	{
-		name_ = "Black, red green, blue and white";
+		name_ = "Black, red green and blue";
 
 		palette_[0] = { 0, 0, 0 };
 		palette_[1] = { 255, 0, 0 };
